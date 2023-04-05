@@ -1,26 +1,41 @@
-from flask import Flask, render_template, request, Response
-app = Flask(__name__)
-
+from flask import Flask, render_template, request,Response
 import geopandas as gpd
+import io
+import contextily
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
-gdfQuar = gpd.read_file('/workspace/Flask_fontanelle/ds964_nil_wm.zip')
-gdfFont = gpd.read_file('/workspace/Flask_fontanelle/Fontanelle.zip')
+app = Flask(__name__)
+df = gpd.read_file('/workspace/Flask_fontanelle/ds964_nil_wm.zip')
+fonta=gpd.read_file("/workspace/Flask_fontanelle/Fontanelle.zip")
+@app.route('/')
+def home():
+  lista=df.NIL.to_list()
+  lista.sort()
+  return render_template('html.html',list=lista)
 
-@app.route('/', methods=['GET'])
-def quartieri():
-    list = gdfQuar.NIL.to_list()
-    return render_template('home.html', lista=list)
+@app.route('/search', methods = ['GET'])
+def search():
+  comune=request.args["comu"]
+  sel=df[df.NIL==comune]
+  return render_template('mapp.html',comune=comune)
 
-@app.route('/quartieri', methods=['GET'])
-def mappa():
-    return render_template('url_elencoReg.html', nomi=gdfRegioni['DEN_REG'].to_list(), codici=gdfRegioni['COD_REG'].to_list())
+@app.route('/map', methods = ['GET'])
+def map():
+  comune=request.args["comune"]
+  sel=df[df.NIL==comune]
+  fon=fonta[fonta.intersects(sel.geometry.item())]
 
-@app.route('/mappa', methods=['GET'])
-def mappa_quartiere():
-    quartiere_selezionato = request.args.get('quartiere')
-    gdfQuartiere = gdfQuar[gdfQuar['NIL'] == quartiere_selezionato]
-    gdfFontanelle_quartiere = gpd.sjoin(gdfFont, gdfQuartiere, op='within')
-    return render_template('mappa_quartiere.html', quartiere=quartiere_selezionato, gdfFontanelle=gdfFontanelle_quartiere.to_json())
+  fig, ax = plt.subplots(figsize = (12,8))
+  sel.to_crs(epsg=3857).plot(ax=ax, alpha=0.5)
+  fon.to_crs(3857).plot(ax=ax,color="Blue")
+  contextily.add_basemap(ax=ax)
+  output = io.BytesIO()
+  FigureCanvas(fig).print_png(output)
+  return Response(output.getvalue(), mimetype='image/png')
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0', port=3245, debug=True)
