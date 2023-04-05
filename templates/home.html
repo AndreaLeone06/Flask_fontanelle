@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Ricerca regionale COVID-19</title>
+</head>
+<body>
+    <h1>Ricerca regionale COVID-19</h1>
+    <form action="/mappa" method="get">
+        <label for="quartiere">Seleziona il quartiere:</label>
+        <select id="quartiere" name="list">
+            {% for quartiere in list %}
+            <option value="{{ quartiere }}">{{ quartiere }}</option>
+            {% endfor %}
+        </select>
+        <input type="submit" value="Cerca">
+    </form>
+</body>
+</html>
